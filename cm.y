@@ -14,7 +14,6 @@ int yyerror(char *);
 
 %}
 
-/*%define api.value.type {Value} */
 
 %token ENDFILE ERROR
 %token INT VOID
@@ -34,85 +33,123 @@ program:
 
 declaration_list : 
     declaration_list declaration
-    {   
-        $$ = mknode(DECL_L, addSibling($1, $2));
+    {
+        $$ = addSibling($1, $2);
     }
-
     | declaration
     {   
-        $$ = mknode(DECL_L, $1);
+        $$ = $1;
     }
     ;
 
 declaration:
     var_declaration
-    { $$ = mknode(DECL, $1); }
+    { $$ = $1; }
     | fun_declaration
-    { $$ = mknode(DECL, $1); }
+    { $$ = $1; }
     ;
 
 var_declaration:
     type_specifier _id ';'
-    { $$ = mknode(VAR_DECL, $1); }
+    { addSibling($1, $2); $$ = $1; }
     | type_specifier _id '[' _num ']' ';'
-    { $$ = mknode(VAR_DECL, addSibling($1, $3)); }
+    { 
+        $$ = $1;
+        $2->is_vector = 1;
+        addChild($$, $2);
+        addChild($2, $4);
+    }
     ;
 
 type_specifier:
     INT
-    { $$ = mknode(TYPE, mknode(INT, NULL)); }
+    { 
+        $$ = newExpNode(TypeK);
+        $$->type = Integer;
+        $$->attr.name = copyString(tokenString);
+    }
     | VOID
-    { $$ = mknode(TYPE, mknode(VOID, NULL)); }
+    { 
+        $$ = newExpNode(TypeK);
+        $$->type = Void;
+        $$->attr.name = copyString(tokenString);
+    }
     ;
 
 fun_declaration:
-    type_specifier _id '(' params ')' 
-    { $$ = mknode(FUN_DECL, addSibling($1, addSibling($2,$4))); }
+    type_specifier _id '(' params ')' ';'
+    { 
+        $$ = newStmtNode(FuncK);
+        $$->attr.name = $2->attr.name;
+        addChild($$, $4);
+    }
     | type_specifier _id '(' params ')' compound_stmt
-    { $$ = mknode(FUN_DECL, addSibling($1, $2));
-      addSibling($2, addSibling($4, $6)); }
+    { 
+        $$ = newStmtNode(FuncK);
+        $$->attr.name = $2->attr.name;
+        addChild($$, $4);
+        addSibling($4, $6);
+    }
     ;
 
 params:
     param_list
-    { $$ = mknode(PARAM, $1); }
-    | VOID  
-    { $$ = mknode(PARAM, mknode(VOID, NULL)); }
+    { 
+        $$ = newStmtNode(ParamsK);
+        // $$->firstchild = $1;
+        addChild($$, $1);
+    }
+    | VOID
+    { $$ = NULL; }
     ;
 
 param_list:
     param_list ',' param
-    { $$ = addSibling($1, $2); }
+    { 
+      $$ = addSibling($1, $3);
+    }
     | param
     { $$ = $1; }
     ;
 
 param:
     type_specifier _id
-    { $$ = mknode(PARAM_VAR, addSibling($1, $2)); }
+    { 
+      $$ = $1;
+      addChild($$, $2);
+      $2->is_vector = 0;
+    }
     |  type_specifier _id '[' ']'
     { 
-      $$ = mknode(PARAM_ARR, addSibling($1, $2));
+        $$ = $1;
+        addChild($$, $2);
+        $2->is_vector = 1;
     }
     ;
 
 compound_stmt:
     '{' local_declarations statement_list '}'
-    { $$ = mknode(CMPD_STMT, addSibling($2, $3)); }
+    { $$ = addSibling($2, $3); }
     ;
 
 local_declarations:
     local_declarations var_declaration 
-    { $$ = addSibling($1, $2); }
+    { 
+        $$ = addSibling($1, $2);   
+    }
     | %empty
-    { $$ = mknode(EMPTY, NULL); }
+    { $$ = NULL; }
     ;
 
 statement_list: 
     statement_list statement
-    { $$ = addSibling($1, $2); }
+    { 
+        $$ = addSibling($1, $2);
+    }
     | %empty 
-    { $$ = NULL; }
+    {
+        $$ = NULL; 
+    }
     ;
 
 statement:
@@ -130,97 +167,141 @@ statement:
 
 expression_stmt:
     expression ';'
-    { $$ = mknode(EXPR_STMT, $1); }
+    { $$ = $1; }
     | ';'
     { $$ = NULL; }
     ;
 
 selection_stmt:
     IF '(' expression ')' statement %prec LOWER_ELSE
-    { $$ = mknode(SELECT_STMT, addSibling($3,$5)); }
+    { 
+        $$ = newStmtNode(IfK);
+        addChild($$, $3);
+        addSibling($3, $5);
+    }
     | IF '(' expression  ')' statement ELSE statement
-    { $$ = mknode(SELECT_STMT, addSibling($3, addSibling($5, $7))); }
+    { 
+        $$ = newStmtNode(IfK);
+        addChild($$, $3);
+        addSibling($3, $5);
+        addSibling($5, $7);
+    }
     ;
 
 iteration_stmt:
     WHILE '(' expression ')' statement
-    { $$ = mknode(ITER_STMT, addSibling($3, $5)); }
+    { 
+        $$ = newStmtNode(WhileK);
+        addChild($$, $3);
+        addSibling($3, $5);
+    }
     ;
 
 return_stmt:
     RET ';'
-    { $$ = mknode(RET_STMT, NULL); }
+    { $$ = newStmtNode(ReturnK); }
     | RET expression    
-    { $$ = mknode(RET_STMT, $1); }
+    { 
+        $$ = newStmtNode(ReturnK);
+        addChild($$, $2);
+    }
     ;
 
 expression:
     var '=' simple_expression
-    { $$ = mknode(ASSIGN_EXPR, addSibling($1, $3)); }
+    {
+        $$ = newStmtNode(AssignK);
+        addChild($$, $1);
+        addSibling($1, $3);
+    }
     | simple_expression
     { $$ = $1; }
     ;
 
 var:
     _id %prec ID 
-    { $$ = $1; }
+    { 
+        $$ = $1;
+        $1->is_vector = 0;
+    }
     | _id '[' expression ']'
-    { $$ = mknode(ARRAY_EL, addSibling($1, $3)); }
+    {
+        $$ = newExpNode(VectorK);
+        $$->attr.name = $1->attr.name;
+        $$->is_vector = 1;
+        addChild($$, $3);
+    }
     ;
 
 simple_expression:
     additive_expression relop additive_expression
-    { $$ = mknode(REL_EXPR, addSibling($1, addSibling($2, $3))); }
+    { 
+        $$ = newExpNode(OpK);
+        $$->attr.op = $2->attr.op;
+        addChild($$, $1);
+        addSibling($1, $3);
+    }
     | additive_expression
     { $$ = $1; }
     ;
 
 relop:
     LE 
-    { $$ = mknode(LE, NULL); }
+    { $$ = newExpNode(OpK); $$->attr.op = LE;}
     | LT 
-    { $$ = mknode(LT, NULL); }
+    { $$ = newExpNode(OpK); $$->attr.op = LT; }
     | GT 
-    { $$ = mknode(GT, NULL); }
+    { $$ = newExpNode(OpK); $$->attr.op = GT; }
     | GE 
-    { $$ = mknode(GE, NULL); }
+    { $$ = newExpNode(OpK); $$->attr.op = GE; }
     | EQ
-    { $$ = mknode(EQ, NULL); } 
+    { $$ = newExpNode(OpK); $$->attr.op = EQ; } 
     | NEQ
-    { $$ = mknode(NEQ, NULL); }
+    { $$ = newExpNode(OpK); $$->attr.op = NEQ; }
     ;
 
 additive_expression:
     additive_expression addop term
-    { $$ = mknode(ADD_EXPR, addSibling($1, addSibling($2, $3))); }
+    { 
+        $$ = newExpNode(OpK);
+        $$->attr.op = $2->attr.op;
+        addChild($$, $1);
+        addSibling($1, $3);
+    }
     | term
     { $$ = $1; }
     ;
 
 addop:
     '+' 
-    { $$ = mknode('+', NULL); }
+    { $$ = mknode('+', NULL); $$->attr.op = '+'; }
     | '-'
-    { $$ = mknode('-', NULL); }
+    { $$ = mknode('-', NULL); $$->attr.op = '-'; }
     ;
 
 term:
     term mulop factor
-    { $$ = mknode(MUL_EXPR, addSibling($1, addSibling($2, $3))); }
+    {
+      $$ = newExpNode(OpK);
+      addChild($$, $1);
+      addSibling($1, $3);
+      $$->attr.op = $2->attr.op;
+      addSibling($1, $3);
+    }
     | factor
     { $$ = $1; }
     ;
 
 mulop:
     '*'
-    { $$ = mknode('*', NULL); } 
+    { $$ = mknode('*', NULL); $$->attr.op = '*'; } 
     | '/'
-    { $$ = mknode('/', NULL); }
+    { $$ = mknode('/', NULL); $$->attr.op = '/'; }
     ;
 
 factor:
     '(' expression ')'
-    { $$ = $1; }
+    { $$ = $2; }
     | var
     { $$ = $1; }
     | call
@@ -231,31 +312,43 @@ factor:
 
 call:
     _id '(' args ')' 
-    { $$ = mknode(CALL, addSibling($1, $3)); }
+    { 
+        $$ = newStmtNode(CallK);
+        $$->attr.name = $1->attr.name;
+        addChild($$, $3);
+    }
    ;
 
 args:
     arg_list
     { $$ = $1; }
-    | %empty 
+    | %empty
     { $$ = NULL; }
     ;
 
 arg_list:
     arg_list ',' expression
-    { $$ = addSibling($1, $3); }
+    { 
+        $$ = addSibling($1, $3); 
+    }
     | expression
     { $$ = $1; }
     ;
   
 _id:
     ID
-    { $$ = mknode(ID, NULL); }
+    { 
+        $$ = newExpNode(IdK); 
+        $$->attr.name = copyString(tokenString);
+    }
     ;
 
 _num:
     NUM
-    { $$ = mknode(NUM, NULL); }
+    { 
+        $$ = newExpNode(ConstK);
+        $$->attr.val = atoi(copyString(tokenString));
+    }
     ;
 
 %%

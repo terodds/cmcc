@@ -1,44 +1,84 @@
 #ifndef _TREE_H_
 #define _TREE_H_
 
+#include "globals.h"
 
 /*********************
  * 语法分析树-数据结构
  */
 
+typedef enum {Empty, IntConst, String, Temp, Label} OperandKind;
 
-typedef enum {
-    DECL_L, DECL, VAR_DECL, 
-    TYPE, FUN_DECL, PARAM,
-    PARAM_VAR, PARAM_ARR, 
-    CMPD_STMT, EMPTY, EXPR_STMT,
-    SELECT_STMT, ITER_STMT, RET_STMT, 
-    ASSIGN_EXPR, ARRAY_EL, REL_EXPR, 
-    ADD_EXPR, MUL_EXPR, CALL
-} NodeKind;
-
-struct array_attr
+typedef struct
 {
-    char *name;
-    int size;
-};
+    OperandKind kind;
+    union {
+        int val;
+        struct
+        {
+            const char *name;
+        } variable;
+    } contents;
+} Operand;
 
-typedef int attr_t;
+typedef enum
+{
+    StmtK,
+    ExpK
+} NodeKind;
+typedef enum
+{
+    IfK,
+    WhileK,
+    AssignK,
+    ReturnK,
+    FuncK,
+    CallK,
+    ParamsK
+} StmtKind;
+
+typedef enum
+{
+    OpK,
+    ConstK,
+    IdK,
+    TypeK,
+    VectorK
+} ExpKind;
+
+typedef enum {Void,Integer,Boolean} ExpType;
+
 typedef struct TreeNode
 {
-    int nodekind;
-    attr_t attr;
-    struct TreeNode *firstchild, *nextsibling;   
-} TreeNode, *ParserTree;
-
+    struct TreeNode *firstchild, *nextsibling;
+    int lineno;
+    int already_seem;
+    NodeKind nodekind;
+    union {
+        StmtKind stmt;
+        ExpKind exp;
+    } kind;
+    union {
+        TokenType op;
+        int val;
+        char *name;
+    } attr;
+    char *scope;
+    Operand *oper;
+    int is_vector;
+    ExpType type;
+} TreeNode;
 
 TreeNode *addSibling(TreeNode *, TreeNode *);
 TreeNode *mknode(int, TreeNode *);
+TreeNode *addChild(TreeNode *parent, TreeNode *child);
 
-//void printTree(FILE *, TreeNode *);
-void visitNode(TreeNode *);
+TreeNode *newStmtNode(StmtKind);
+
+TreeNode *newExpNode(ExpKind);
+
+char *copyString(char *);
+
 void printTree(TreeNode *);
-
-
 
 #endif

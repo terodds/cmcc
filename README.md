@@ -1,4 +1,5 @@
-项目树
+## 项目树
+
 ```bash
 cminus
 ├── analyze.c   # 语义分析，扫描语法树填写符号表
@@ -17,3 +18,27 @@ cminus
 └── util.h # 语法分析树数据结构
 ├──*testcase # 测试用例
 ```
+
+## 运行
+
+### Prequisations
+
+- gcc
+- make
+- flex
+- bison
+
+### 执行：
+
+```bash
+make  # generate main executable file
+make test # build and run default testcase
+make test file=[1,2,...,11] # build and fun testcase 1-11 (testcase/test<file>e.txt)
+```
+
+or
+
+```bash
+./test <filepath>
+```
+

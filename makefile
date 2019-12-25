@@ -32,4 +32,4 @@ clean:
 
 
 test: $(EXEC)
-	./test.sh $$CMINUS_HOME/testcase1/test$(file)e.txt
+	./test.sh ./testcase/test$(file)e.txt

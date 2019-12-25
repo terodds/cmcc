@@ -2,7 +2,8 @@
 #define YYPARSER
 
 #include "globals.h"
-#include "tree.h"
+// #include "tree.h"
+#include "util.h"
 #include "scan.h"
 #include "parse.h"
 
@@ -51,13 +52,19 @@ declaration:
 
 var_declaration:
     type_specifier _id ';'
-    { addSibling($1, $2); $$ = $1; }
+    { 
+        $$ = $1;
+        $$->child[0] = $2;
+        // addChild($$, $2);
+    }
     | type_specifier _id '[' _num ']' ';'
     { 
         $$ = $1;
         $2->is_vector = 1;
-        addChild($$, $2);
-        addChild($2, $4);
+        $$->child[0] = $2;
+        $2->child[0] = $2;
+        // addChild($$, $2);
+        // addChild($2, $4);
     }
     ;
 
@@ -77,18 +84,25 @@ type_specifier:
     ;
 
 fun_declaration:
-    type_specifier _id '(' params ')' ';'
+    type_specifier _id '(' params ')'
     { 
         $$ = newStmtNode(FuncK);
         $$->attr.name = $2->attr.name;
-        addChild($$, $4);
+        // addChild($$, $4);
+        $$->child[0] = $4;
     }
     | type_specifier _id '(' params ')' compound_stmt
     { 
         $$ = newStmtNode(FuncK);
         $$->attr.name = $2->attr.name;
-        addChild($$, $4);
-        addSibling($4, $6);
+        // addChild($$, $4);
+        // addSibling($4, $6);
+        $$->child[0] = $4;
+        $$->child[1] = $6;
+        if (!strcmp($1->attr.name, "int"))
+            $$->type = Integer;
+        else
+            $$->type = Void;
     }
     ;
 
@@ -97,7 +111,8 @@ params:
     { 
         $$ = newStmtNode(ParamsK);
         // $$->firstchild = $1;
-        addChild($$, $1);
+        // addChild($$, $1);
+        $$->child[0] = $1;
     }
     | VOID
     { $$ = NULL; }
@@ -116,13 +131,15 @@ param:
     type_specifier _id
     { 
       $$ = $1;
-      addChild($$, $2);
+    //   addChild($$, $2);
+      $$->child[0] = $2;
       $2->is_vector = 0;
     }
     |  type_specifier _id '[' ']'
     { 
         $$ = $1;
-        addChild($$, $2);
+        // addChild($$, $2);
+        $$->child[0] = $2;
         $2->is_vector = 1;
     }
     ;
@@ -176,15 +193,20 @@ selection_stmt:
     IF '(' expression ')' statement %prec LOWER_ELSE
     { 
         $$ = newStmtNode(IfK);
-        addChild($$, $3);
-        addSibling($3, $5);
+        // addChild($$, $3);
+        // addSibling($3, $5);
+         $$->child[0] = $3;
+         $$->child[1] = $5;
     }
     | IF '(' expression  ')' statement ELSE statement
     { 
         $$ = newStmtNode(IfK);
-        addChild($$, $3);
-        addSibling($3, $5);
-        addSibling($5, $7);
+        $$->child[0] = $3;
+        $$->child[1] = $5;
+        $$->child[2] = $7;
+        // addChild($$, $3);
+        // addSibling($3, $5);
+        // addSibling($5, $7);
     }
     ;
 
@@ -192,8 +214,10 @@ iteration_stmt:
     WHILE '(' expression ')' statement
     { 
         $$ = newStmtNode(WhileK);
-        addChild($$, $3);
-        addSibling($3, $5);
+        // addChild($$, $3);
+        // addSibling($3, $5);
+        $$->child[0] = $3;
+        $$->child[1] = $5;
     }
     ;
 
@@ -203,7 +227,8 @@ return_stmt:
     | RET expression    
     { 
         $$ = newStmtNode(ReturnK);
-        addChild($$, $2);
+        // addChild($$, $2);
+        $$->child[0] = $2;
     }
     ;
 
@@ -211,8 +236,10 @@ expression:
     var '=' simple_expression
     {
         $$ = newStmtNode(AssignK);
-        addChild($$, $1);
-        addSibling($1, $3);
+        // addChild($$, $1);
+        // addSibling($1, $3);
+        $$->child[0] = $1;
+        $$->child[1] = $3;
     }
     | simple_expression
     { $$ = $1; }
@@ -229,7 +256,8 @@ var:
         $$ = newExpNode(VectorK);
         $$->attr.name = $1->attr.name;
         $$->is_vector = 1;
-        addChild($$, $3);
+        // addChild($$, $3);
+        $$->child[0] = $3;
     }
     ;
 
@@ -238,8 +266,10 @@ simple_expression:
     { 
         $$ = newExpNode(OpK);
         $$->attr.op = $2->attr.op;
-        addChild($$, $1);
-        addSibling($1, $3);
+        // addChild($$, $1);
+        // addSibling($1, $3);
+        $$->child[0] = $1;
+        $$->child[1] = $3;
     }
     | additive_expression
     { $$ = $1; }
@@ -265,8 +295,11 @@ additive_expression:
     { 
         $$ = newExpNode(OpK);
         $$->attr.op = $2->attr.op;
-        addChild($$, $1);
-        addSibling($1, $3);
+        // $$ = $2;
+        // addChild($$, $1);
+        // addSibling($1, $3);
+        $$->child[0] = $1;
+        $$->child[1] = $3;
     }
     | term
     { $$ = $1; }
@@ -274,19 +307,21 @@ additive_expression:
 
 addop:
     '+' 
-    { $$ = mknode('+', NULL); $$->attr.op = '+'; }
+    { $$ = newExpNode(OpK); $$->attr.op = '+'; }
     | '-'
-    { $$ = mknode('-', NULL); $$->attr.op = '-'; }
+    { $$ = newExpNode(OpK); $$->attr.op = '-'; }
     ;
 
 term:
     term mulop factor
     {
       $$ = newExpNode(OpK);
-      addChild($$, $1);
-      addSibling($1, $3);
+    //   $$ = $2;
+    //   addChild($$, $1);
+    //   addSibling($1, $3);
+     $$->child[0] = $1;
+     $$->child[1] = $3;
       $$->attr.op = $2->attr.op;
-      addSibling($1, $3);
     }
     | factor
     { $$ = $1; }
@@ -294,9 +329,9 @@ term:
 
 mulop:
     '*'
-    { $$ = mknode('*', NULL); $$->attr.op = '*'; } 
+    { $$ = newExpNode(OpK); $$->attr.op = '*'; } 
     | '/'
-    { $$ = mknode('/', NULL); $$->attr.op = '/'; }
+    { $$ = newExpNode(OpK); $$->attr.op = '/'; }
     ;
 
 factor:
@@ -315,7 +350,8 @@ call:
     { 
         $$ = newStmtNode(CallK);
         $$->attr.name = $1->attr.name;
-        addChild($$, $3);
+        // addChild($$, $3);
+        $$->child[0] = $3;
     }
    ;
 

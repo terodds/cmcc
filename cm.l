@@ -2,6 +2,7 @@
 %{
 #include "globals.h"
 #include "scan.h"
+#include "util.h"
 //#include "cm.tab.h"
 //#include "token.h"
 //#include "symtab.h"
@@ -74,10 +75,10 @@ int main()
     return 0;
 }
 */
-void printToken(TokenType currentToken, const char *tokenString)
-{
-    printf("token<%d, %s>\n", currentToken, tokenString);
-}
+// void printToken(TokenType currentToken, const char *tokenString)
+// {
+//     printf("token<%d, %s>\n", currentToken, tokenString);
+// }
 
 
 TokenType getToken()

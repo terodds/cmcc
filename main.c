@@ -1,11 +1,11 @@
 #include "globals.h"
 
 #define NO_PARSE FALSE
-#define NO_ANALYZE TRUE
+#define NO_ANALYZE FALSE
 #define NO_CODE TRUE
 
-//#include "util.h"
-#include "tree.h"
+#include "util.h"
+// #include "tree.h"
 
 #if NO_PARSE
 #include "scan.h"
@@ -67,9 +67,9 @@ int main(int argc, char *argv[])
     if(!Error)
     {
         fprintf(listing, "\nBuilding Symbol Table...\n");
-        //buildSymtab(syntaxTree);
+        buildSymtab(syntaxTree, 0);
         fprintf(listing, "\nChecking Types...\n");
-        //typeCheck(syntaxTree);
+        typeCheck(syntaxTree);
         fprintf(listing, "\nType Checking Finished\n");
     }
 

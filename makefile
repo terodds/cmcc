@@ -1,7 +1,6 @@
 CC = gcc
 CFLAGS = -c -g -Wall -O3
 EXEC = main
-file = test.c
 
 .SUFFIXES: .c .o
 
@@ -13,7 +12,7 @@ BISONSRC = cm.tab.c
 BISONHDR = cm.tab.h
 BISONVERBOSE = cm.output
 
-SRCS = main.c tree.c symtab.c $(LEXSRC) $(BISONSRC)
+SRCS = main.c util.c symtab.c analyze.c $(LEXSRC) $(BISONSRC)
 OBJS = $(SRCS:.c=.o)
 
 $(EXEC): $(OBJS)
@@ -33,4 +32,4 @@ clean:
 
 
 test: $(EXEC)
-	./test.sh $(file)
+	./test.sh $$CMINUS_HOME/testcase1/test$(file)e.txt
